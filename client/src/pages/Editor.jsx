@@ -4,7 +4,7 @@ import CodeEditor from "../components/CodeEditor";
 import ChatBox from "../components/ChatBox";
 import { io } from "socket.io-client";
 
-const socket = io("http://localhost:5000");
+const socket = io("https://codesync-n63p.onrender.com");
 
 function Editor() {
   const { roomId } = useParams();
