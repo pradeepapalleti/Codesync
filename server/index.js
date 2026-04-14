@@ -28,6 +28,10 @@ io.on("connection", (socket) => {
     socket.to(roomId).emit("code_update", code);
   });
 
+  socket.on("send_message", ({ roomId, message }) => {
+  socket.to(roomId).emit("receive_message", message);
+});
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
