@@ -1,7 +1,16 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function ChatBox({ socket, roomId, messages, setMessages, userName }) {
   const [message, setMessage] = useState("");
+  const streamRef = useRef(null);
+
+  useEffect(() => {
+    const stream = streamRef.current;
+
+    if (!stream) return;
+
+    stream.scrollTop = stream.scrollHeight;
+  }, [messages]);
 
   const sendMessage = () => {
     const trimmed = message.trim();
@@ -31,7 +40,7 @@ function ChatBox({ socket, roomId, messages, setMessages, userName }) {
         <span>{messages.length}</span>
       </div>
 
-      <div className="chat-stream">
+      <div className="chat-stream" ref={streamRef}>
         {messages.length === 0 ? (
           <p className="empty-state">No messages yet. Say hello.</p>
         ) : (

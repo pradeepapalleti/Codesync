@@ -499,7 +499,7 @@ button:hover {
 .editor-panel {
   padding: 0;
   overflow: hidden;
-  height: clamp(420px, 62vh, 760px);
+  height: clamp(360px, 56vh, 680px);
 }
 
 .editor-panel > div {
@@ -508,7 +508,7 @@ button:hover {
 
 .output-box {
   margin: 14px 0 0;
-  min-height: 132px;
+  min-height: 96px;
   padding: 16px;
   border-radius: 16px;
   background: rgba(8, 17, 31, 0.9);
@@ -528,16 +528,18 @@ button:hover {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-height: 380px;
 }
 
 .chat-stream {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  min-height: 190px;
 }
 
 .editor-sidebar .chat-panel {
-  min-height: 320px;
+  min-height: 420px;
 }
 
 .send-button {
@@ -570,7 +572,7 @@ button:hover {
   }
 
   .editor-panel {
-    height: clamp(360px, 56vh, 620px);
+    height: clamp(320px, 50vh, 560px);
   }
 
   .home-grid {

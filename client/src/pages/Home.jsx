@@ -5,6 +5,11 @@ function Home() {
   const [roomId, setRoomId] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [feedback, setFeedback] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [createPassword, setCreatePassword] = useState("");
+  const [joinPassword, setJoinPassword] = useState("");
+  const [roomIsPrivate, setRoomIsPrivate] = useState(false);
+  const [checkingRoom, setCheckingRoom] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,24 +55,107 @@ function Home() {
     navigate(`/editor/${targetRoomId}`, {
       state: {
         userName,
+        roomPassword: isPrivate ? createPassword : undefined,
       },
     });
   };
 
-  const joinRoom = () => {
+  const joinRoom = async () => {
     const trimmedRoomId = roomId.trim().toUpperCase();
 
     if (!trimmedRoomId) {
       setFeedback("Enter a room code first.");
       return;
     }
-    goToEditor(trimmedRoomId);
+
+    setCheckingRoom(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/rooms/${trimmedRoomId}`);
+      const data = await res.json();
+
+      if (!data.exists) {
+        setFeedback("Room does not exist.");
+        setCheckingRoom(false);
+        return;
+      }
+
+      // If room is private and no password yet, show password field and wait
+      if (data.isPrivate && !joinPassword.trim()) {
+        setRoomIsPrivate(true);
+        setFeedback("This room is private. Enter the password.");
+        setCheckingRoom(false);
+        return;
+      }
+
+      // If room is private, verify password
+      if (data.isPrivate) {
+        const verifyRes = await fetch("http://localhost:5000/api/rooms/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roomId: trimmedRoomId, password: joinPassword }),
+        });
+        const verifyData = await verifyRes.json();
+
+        if (!verifyData.valid) {
+          setFeedback("Wrong password.");
+          setCheckingRoom(false);
+          return;
+        }
+      }
+
+      // Password is valid or room is public, proceed to join
+      setRoomIsPrivate(false);
+      setFeedback("");
+      const userName = saveIdentity();
+      navigate(`/editor/${trimmedRoomId}`, {
+        state: {
+          userName,
+          roomPassword: joinPassword || undefined,
+        },
+      });
+    } catch (err) {
+      console.error("Error joining room:", err);
+      setFeedback("Error checking room.");
+    } finally {
+      setCheckingRoom(false);
+    }
   };
 
-  const createRoom = () => {
+  const createRoom = async () => {
+    if (isPrivate && !createPassword.trim()) {
+      setFeedback("Set a password for your private room.");
+      return;
+    }
+
     const roomCode = createRoomCode();
 
-    goToEditor(roomCode);
+    try {
+      const res = await fetch("http://localhost:5000/api/rooms/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roomId: roomCode,
+          isPrivate,
+          password: isPrivate ? createPassword : undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        setFeedback("Error creating room.");
+        return;
+      }
+
+      const userName = saveIdentity();
+      navigate(`/editor/${roomCode}`, {
+        state: {
+          userName,
+          roomPassword: createPassword || undefined,
+        },
+      });
+    } catch (err) {
+      console.error("Error creating room:", err);
+      setFeedback("Error creating room.");
+    }
   };
 
   return (
@@ -96,6 +184,37 @@ function Home() {
             onChange={(e) => setDisplayName(e.target.value)}
           />
 
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "16px" }}>
+            <input
+              id="privateCheckbox"
+              type="checkbox"
+              checked={isPrivate}
+              onChange={(e) => {
+                setIsPrivate(e.target.checked);
+                setCreatePassword("");
+              }}
+              style={{ width: "18px", height: "18px", cursor: "pointer" }}
+            />
+            <label htmlFor="privateCheckbox" style={{ cursor: "pointer", margin: 0 }}>
+              Make room private
+            </label>
+          </div>
+
+          {isPrivate && (
+            <>
+              <label className="field-label" htmlFor="createPassword">
+                Room password
+              </label>
+              <input
+                id="createPassword"
+                type="password"
+                placeholder="Enter password"
+                value={createPassword}
+                onChange={(e) => setCreatePassword(e.target.value)}
+              />
+            </>
+          )}
+
           <button type="button" onClick={createRoom}>
             Create room
           </button>
@@ -116,6 +235,21 @@ function Home() {
             onChange={(e) => setRoomId(e.target.value)}
           />
 
+          {roomIsPrivate && (
+            <>
+              <label className="field-label" htmlFor="joinPassword">
+                Room password
+              </label>
+              <input
+                id="joinPassword"
+                type="password"
+                placeholder="Enter password"
+                value={joinPassword}
+                onChange={(e) => setJoinPassword(e.target.value)}
+              />
+            </>
+          )}
+
           <label className="field-label" htmlFor="joinName">
             Display name
           </label>
@@ -126,8 +260,8 @@ function Home() {
             onChange={(e) => setDisplayName(e.target.value)}
           />
 
-          <button type="button" onClick={joinRoom}>
-            Join room
+          <button type="button" onClick={joinRoom} disabled={checkingRoom}>
+            {checkingRoom ? "Checking..." : "Join room"}
           </button>
           {feedback ? <p className="form-feedback">{feedback}</p> : null}
         </section>

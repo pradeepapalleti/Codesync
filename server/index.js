@@ -2,10 +2,13 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const axios = require("axios");
+const { createRoom, verifyRoomPassword, getRoomInfo, roomExists } = require("./db");
 
 const rooms = new Map();
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 const server = http.createServer(app);
 
@@ -138,9 +141,61 @@ io.on("connection", (socket) => {
   });
 });
 
-const axios = require("axios");
+// REST API endpoints
 
-app.use(express.json());
+app.post("/api/rooms/create", async (req, res) => {
+  try {
+    const { roomId, isPrivate, password } = req.body;
+
+    if (!roomId) {
+      return res.status(400).json({ error: "Room ID required" });
+    }
+
+    if (isPrivate && !password) {
+      return res.status(400).json({ error: "Password required for private room" });
+    }
+
+    const result = await createRoom(roomId, isPrivate, password);
+    res.json(result);
+  } catch (err) {
+    console.error("Create room error:", err);
+    res.status(500).json({ error: "Error creating room" });
+  }
+});
+
+app.get("/api/rooms/:roomId", async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const room = await getRoomInfo(roomId);
+
+    if (!room) {
+      return res.json({ exists: false, isPrivate: false });
+    }
+
+    res.json({ exists: true, isPrivate: room.isPrivate });
+  } catch (err) {
+    console.error("Get room error:", err);
+    res.status(500).json({ error: "Error getting room info" });
+  }
+});
+
+app.post("/api/rooms/verify", async (req, res) => {
+  try {
+    const { roomId, password } = req.body;
+
+    if (!roomId || !password) {
+      return res.status(400).json({ valid: false });
+    }
+
+    const result = await verifyRoomPassword(roomId, password);
+    res.json(result);
+  } catch (err) {
+    console.error("Verify password error:", err);
+    res.status(500).json({ valid: false });
+  }
+});
+
+// Code execution endpoint
 
 app.post("/run", async (req, res) => {
   const { code, languageId } = req.body;
