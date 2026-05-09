@@ -191,7 +191,7 @@ After deployment, the client will automatically use the production backend URL f
   - Shared cursor positions
   - Code history & undo for all users
   - More language support
-  - Private/password-protected rooms
+   - (Private/password-protected rooms removed)
 
 ## Troubleshooting
 

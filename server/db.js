@@ -1,120 +1,42 @@
-const sqlite3 = require("sqlite3").verbose();
-const bcrypt = require("bcryptjs");
-const path = require("path");
+// Simple in-memory room registry. Removes any SQL/storage and password logic.
+const rooms = new Map();
 
-const dbPath = path.join(__dirname, "codesync.db");
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error("Database connection error:", err.message);
-  } else {
-    console.log("Connected to SQLite database");
-    initializeDB();
-  }
-});
-
-function initializeDB() {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS rooms (
-      roomId TEXT PRIMARY KEY,
-      isPrivate INTEGER DEFAULT 0,
-      passwordHash TEXT,
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
-}
-
-function createRoom(roomId, isPrivate, password) {
-  return new Promise((resolve, reject) => {
-    if (isPrivate && password) {
-      bcrypt.hash(password, 10, (err, hash) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-
-        db.run(
-          "INSERT INTO rooms (roomId, isPrivate, passwordHash) VALUES (?, ?, ?)",
-          [roomId, 1, hash],
-          (err) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve({ roomId, isPrivate: true });
-            }
-          }
-        );
+function createRoom(roomId) {
+  return new Promise((resolve) => {
+    if (!rooms.has(roomId)) {
+      rooms.set(roomId, {
+        roomId,
+        isPrivate: false,
+        createdAt: new Date().toISOString(),
       });
-    } else {
-      db.run(
-        "INSERT INTO rooms (roomId, isPrivate, passwordHash) VALUES (?, ?, ?)",
-        [roomId, 0, null],
-        (err) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({ roomId, isPrivate: false });
-          }
-        }
-      );
     }
+
+    resolve({ roomId, isPrivate: false });
   });
 }
 
-function verifyRoomPassword(roomId, password) {
-  return new Promise((resolve, reject) => {
-    db.get("SELECT * FROM rooms WHERE roomId = ?", [roomId], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-
-      if (!row) {
-        resolve({ valid: false, exists: false });
-        return;
-      }
-
-      if (!row.isPrivate) {
-        resolve({ valid: true, exists: true });
-        return;
-      }
-
-      bcrypt.compare(password, row.passwordHash, (err, matches) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ valid: matches, exists: true });
-        }
-      });
-    });
+function verifyRoomPassword(roomId /*, password */) {
+  return new Promise((resolve) => {
+    const exists = rooms.has(roomId);
+    // Passwords are not used; always return valid if room exists
+    resolve({ valid: exists, exists });
   });
 }
 
 function getRoomInfo(roomId) {
-  return new Promise((resolve, reject) => {
-    db.get("SELECT roomId, isPrivate FROM rooms WHERE roomId = ?", [roomId], (err, row) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(row || null);
-      }
-    });
+  return new Promise((resolve) => {
+    const room = rooms.get(roomId) || null;
+    resolve(room);
   });
 }
 
 function roomExists(roomId) {
-  return new Promise((resolve, reject) => {
-    db.get("SELECT roomId FROM rooms WHERE roomId = ?", [roomId], (err, row) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(!!row);
-      }
-    });
+  return new Promise((resolve) => {
+    resolve(rooms.has(roomId));
   });
 }
 
 module.exports = {
-  db,
   createRoom,
   verifyRoomPassword,
   getRoomInfo,

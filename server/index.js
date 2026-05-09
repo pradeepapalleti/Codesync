@@ -3,7 +3,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 const axios = require("axios");
-const { createRoom, verifyRoomPassword, getRoomInfo, roomExists } = require("./db");
+const { createRoom, getRoomInfo, roomExists } = require("./db");
 
 const rooms = new Map();
 const app = express();
@@ -145,17 +145,13 @@ io.on("connection", (socket) => {
 
 app.post("/api/rooms/create", async (req, res) => {
   try {
-    const { roomId, isPrivate, password } = req.body;
+    const { roomId } = req.body;
 
     if (!roomId) {
       return res.status(400).json({ error: "Room ID required" });
     }
 
-    if (isPrivate && !password) {
-      return res.status(400).json({ error: "Password required for private room" });
-    }
-
-    const result = await createRoom(roomId, isPrivate, password);
+    const result = await createRoom(roomId);
     res.json(result);
   } catch (err) {
     console.error("Create room error:", err);
@@ -179,21 +175,7 @@ app.get("/api/rooms/:roomId", async (req, res) => {
   }
 });
 
-app.post("/api/rooms/verify", async (req, res) => {
-  try {
-    const { roomId, password } = req.body;
-
-    if (!roomId || !password) {
-      return res.status(400).json({ valid: false });
-    }
-
-    const result = await verifyRoomPassword(roomId, password);
-    res.json(result);
-  } catch (err) {
-    console.error("Verify password error:", err);
-    res.status(500).json({ valid: false });
-  }
-});
+// Password verification endpoint removed — passwords are not used anymore.
 
 // Code execution endpoint
 
